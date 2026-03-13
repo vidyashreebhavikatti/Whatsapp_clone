@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>WhatsApp Clone</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  
+  :root {
+    --wa-green: #00a884;
+    --wa-green-dark: #008069;
+    --wa-panel-bg: #111b21;
+    --wa-panel-header: #202c33;
+    --wa-chat-bg: #0b141a;
+    --wa-chat-bg-pattern: #0b141a;
+    --wa-message-out: #005c4b;
+    --wa-message-in: #202c33;
+    --wa-text-primary: #e9edef;
+    --wa-text-secondary: #8696a0;
+    --wa-border: #313d45;
+    --wa-hover: #2a3942;
+    --wa-active: #2a3942;
+    --wa-icon: #aebac1;
+    --wa-tick-grey: #8696a0;
+    --wa-tick-blue: #53bdeb;
+    --wa-input-bg: #2a3942;
+    --wa-search-bg: #111b21;
+    --scrollbar-w: 6px;
+  }
+
+  html, body, #root { height: 100%; overflow: hidden; }
+  body { font-family: 'Inter', -apple-system, sans-serif; background: var(--wa-panel-bg); color: var(--wa-text-primary); }
+
+  ::-webkit-scrollbar { width: var(--scrollbar-w); }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #3c4f58; border-radius: 3px; }
+
+  /* ── Layout ─────────────────────────────────────────────────────────────── */
+  .app-container { display: flex; height: 100vh; width: 100vw; overflow: hidden; }
+
+  /* ── Sidebar ─────────────────────────────────────────────────────────────── */
+  .sidebar { width: 420px; min-width: 320px; display: flex; flex-direction: column; border-right: 1px solid var(--wa-border); }
+  
+  .sidebar-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: var(--wa-panel-header); height: 60px; }
+  .sidebar-header .user-avatar { width: 40px; height: 40px; border-radius: 50%; cursor: pointer; object-fit: cover; background: var(--wa-green); display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 600; }
+  .sidebar-header .actions { display: flex; gap: 10px; }
+  .icon-btn { background: none; border: none; cursor: pointer; color: var(--wa-icon); padding: 6px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: background 0.15s; }
+  .icon-btn:hover { background: var(--wa-hover); }
+
+  .search-bar { padding: 8px 12px; background: var(--wa-panel-bg); }
+  .search-input-wrap { display: flex; align-items: center; gap: 8px; background: var(--wa-input-bg); border-radius: 8px; padding: 8px 12px; }
+  .search-input-wrap svg { color: var(--wa-text-secondary); flex-shrink: 0; }
+  .search-input-wrap input { flex: 1; background: none; border: none; outline: none; color: var(--wa-text-primary); font-size: 14px; }
+  .search-input-wrap input::placeholder { color: var(--wa-text-secondary); }
+
+  .chat-list { flex: 1; overflow-y: auto; }
+  .chat-item { display: flex; align-items: center; gap: 12px; padding: 10px 16px; cursor: pointer; transition: background 0.15s; border-bottom: 1px solid rgba(255,255,255,0.03); }
+  .chat-item:hover, .chat-item.active { background: var(--wa-hover); }
+  .chat-avatar { width: 49px; height: 49px; border-radius: 50%; flex-shrink: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 600; }
+  .chat-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .chat-info { flex: 1; min-width: 0; }
+  .chat-top { display: flex; justify-content: space-between; align-items: baseline; }
+  .chat-name { font-size: 15px; font-weight: 500; color: var(--wa-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chat-time { font-size: 12px; color: var(--wa-text-secondary); white-space: nowrap; flex-shrink: 0; }
+  .chat-preview { display: flex; align-items: center; gap: 4px; }
+  .chat-preview-text { font-size: 13px; color: var(--wa-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .unread-badge { background: var(--wa-green); color: white; border-radius: 10px; padding: 1px 6px; font-size: 11px; font-weight: 600; flex-shrink: 0; margin-left: auto; }
+  .online-dot { width: 10px; height: 10px; background: var(--wa-green); border-radius: 50%; border: 2px solid var(--wa-panel-header); flex-shrink: 0; }
+
+  /* ── Chat Area ───────────────────────────────────────────────────────────── */
+  .chat-area { flex: 1; display: flex; flex-direction: column; background: var(--wa-chat-bg); position: relative; }
+  
+  .chat-header { display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: var(--wa-panel-header); height: 60px; border-bottom: 1px solid var(--wa-border); }
+  .chat-header .contact-info { flex: 1; }
+  .chat-header .contact-name { font-size: 15px; font-weight: 600; }
+  .chat-header .contact-status { font-size: 12px; color: var(--wa-text-secondary); margin-top: 1px; }
+  .chat-header .contact-status.online { color: var(--wa-green); }
+
+  /* WhatsApp background pattern */
+  .messages-area {
+    flex: 1; overflow-y: auto; padding: 16px 0;
+    background-color: var(--wa-chat-bg);
+    background-image: url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23182229' fill-opacity='0.6'%3E%3Cpath d='M40 0L0 40h80L40 0zM0 40l40 40 40-40H0z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  }
+
+  .messages-inner { display: flex; flex-direction: column; gap: 2px; min-height: 100%; justify-content: flex-end; padding: 0 80px; }
+  
+  .date-divider { text-align: center; margin: 12px 0; }
+  .date-divider span { background: #182229; color: var(--wa-text-secondary); font-size: 12px; padding: 4px 12px; border-radius: 8px; }
+
+  .message-group { display: flex; flex-direction: column; margin: 1px 0; }
+  
+  .message-bubble {
+    max-width: 65%; padding: 6px 10px 8px; border-radius: 8px;
+    position: relative; word-break: break-word; line-height: 1.4;
+    font-size: 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    animation: msgIn 0.15s ease-out;
+  }
+  @keyframes msgIn { from { opacity: 0; transform: scale(0.95) translateY(4px); } to { opacity: 1; transform: none; } }
+
+  .message-bubble.outgoing { background: var(--wa-message-out); align-self: flex-end; border-bottom-right-radius: 2px; }
+  .message-bubble.incoming { background: var(--wa-message-in); align-self: flex-start; border-bottom-left-radius: 2px; }
+  .message-bubble.sending { opacity: 0.7; }
+  .message-bubble.failed { border: 1px solid #e74c3c; }
+
+  .message-tail-out { position: absolute; right: -8px; bottom: 0; width: 0; height: 0; border-left: 8px solid var(--wa-message-out); border-top: 8px solid transparent; }
+  .message-tail-in { position: absolute; left: -8px; bottom: 0; width: 0; height: 0; border-right: 8px solid var(--wa-message-in); border-top: 8px solid transparent; }
+
+  .message-content { color: var(--wa-text-primary); }
+  .message-deleted { color: var(--wa-text-secondary); font-style: italic; }
+  .message-footer { display: flex; align-items: center; justify-content: flex-end; gap: 4px; margin-top: 2px; }
+  .message-time { font-size: 11px; color: rgba(233,237,239,0.6); white-space: nowrap; }
+
+  /* ── Tick icons ──── */
+  .ticks { display: flex; align-items: center; }
+  .tick { width: 16px; height: 16px; }
+  .tick-grey { color: var(--wa-tick-grey); }
+  .tick-blue { color: var(--wa-tick-blue); }
+
+  /* ── Typing indicator ─── */
+  .typing-indicator { padding: 4px 80px; }
+  .typing-bubble { background: var(--wa-message-in); border-radius: 18px; padding: 8px 12px; display: inline-flex; align-items: center; gap: 4px; }
+  .typing-dot { width: 6px; height: 6px; background: var(--wa-text-secondary); border-radius: 50%; animation: typingBounce 1.2s infinite; }
+  .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes typingBounce { 0%,60%,100% { transform: translateY(0); } 30% { transform: translateY(-6px); } }
+
+  /* ── Input area ──────────────────────────────────────────────────────────── */
+  .chat-input-area { background: var(--wa-panel-header); padding: 8px 16px; display: flex; align-items: center; gap: 10px; border-top: 1px solid var(--wa-border); }
+  .message-input-wrap { flex: 1; background: var(--wa-input-bg); border-radius: 10px; display: flex; align-items: center; padding: 8px 14px; gap: 10px; }
+  .message-input { flex: 1; background: none; border: none; outline: none; color: var(--wa-text-primary); font-size: 15px; max-height: 120px; resize: none; font-family: inherit; line-height: 1.5; }
+  .message-input::placeholder { color: var(--wa-text-secondary); }
+  .send-btn { width: 46px; height: 46px; border-radius: 50%; background: var(--wa-green); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: white; transition: background 0.15s; flex-shrink: 0; }
+  .send-btn:hover { background: var(--wa-green-dark); }
+  .send-btn:disabled { background: var(--wa-input-bg); cursor: not-allowed; }
+
+  /* ── Empty state ─────────────────────────────────────────────────────────── */
+  .empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--wa-text-secondary); gap: 16px; }
+  .empty-state svg { opacity: 0.3; }
+  .empty-state h2 { font-size: 28px; font-weight: 300; color: var(--wa-text-primary); }
+  .empty-state p { font-size: 14px; max-width: 280px; text-align: center; }
+
+  /* ── Auth screen ─────────────────────────────────────────────────────────── */
+  .auth-screen { display: flex; align-items: center; justify-content: center; height: 100vh; background: var(--wa-panel-bg); }
+  .auth-card { background: var(--wa-panel-header); border-radius: 12px; padding: 40px; width: 380px; display: flex; flex-direction: column; gap: 20px; }
+  .auth-logo { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+  .auth-logo-icon { width: 52px; height: 52px; background: var(--wa-green); border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+  .auth-logo h1 { font-size: 22px; font-weight: 600; }
+  .auth-logo p { font-size: 13px; color: var(--wa-text-secondary); }
+  .auth-tabs { display: flex; background: var(--wa-panel-bg); border-radius: 8px; padding: 3px; }
+  .auth-tab { flex: 1; padding: 8px; text-align: center; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.2s; color: var(--wa-text-secondary); border: none; background: none; }
+  .auth-tab.active { background: var(--wa-green); color: white; }
+  .form-field { display: flex; flex-direction: column; gap: 6px; }
+  .form-field label { font-size: 13px; color: var(--wa-text-secondary); }
+  .form-field input { background: var(--wa-input-bg); border: 1px solid var(--wa-border); border-radius: 8px; padding: 10px 14px; color: var(--wa-text-primary); font-size: 14px; outline: none; transition: border 0.2s; }
+  .form-field input:focus { border-color: var(--wa-green); }
+  .auth-btn { background: var(--wa-green); color: white; border: none; border-radius: 8px; padding: 12px; font-size: 15px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+  .auth-btn:hover { background: var(--wa-green-dark); }
+  .auth-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+  .auth-error { background: rgba(231,76,60,0.15); border: 1px solid rgba(231,76,60,0.3); border-radius: 8px; padding: 10px; font-size: 13px; color: #e74c3c; }
+
+  /* ── Status indicators ───────────────────────────────────────────────────── */
+  .ws-status { position: fixed; top: 8px; right: 8px; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; z-index: 100; }
+  .ws-status.connected { background: rgba(0,168,132,0.2); color: var(--wa-green); }
+  .ws-status.disconnected { background: rgba(231,76,60,0.2); color: #e74c3c; }
+
+  .load-more-btn { text-align: center; padding: 8px; }
+  .load-more-btn button { background: none; border: none; color: var(--wa-text-secondary); cursor: pointer; font-size: 13px; }
+  .load-more-btn button:hover { color: var(--wa-text-primary); }
+
+  @media (max-width: 700px) {
+    .sidebar { width: 100%; }
+    .chat-area { display: none; }
+    .sidebar.has-active { display: none; }
+    .chat-area.has-active { display: flex; }
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="module">
+// ── Minimal React setup (CDN) ─────────────────────────────────────────────────
+// In real project: use Vite + npm. This is for demo/preview.
+import { createElement as h, useState, useEffect, useRef, useCallback, createContext, useContext } from 'https://esm.sh/react@18';
+import { createRoot } from 'https://esm.sh/react-dom@18/client';
+
+// ── Config ────────────────────────────────────────────────────────────────────
+const API = 'http://localhost:8000/api/v1';
+const WS_URL = 'ws://localhost:8000';
+
+// ── SVG Icons ─────────────────────────────────────────────────────────────────
+const Icon = {
+  Logo: () => h('svg', { width: 28, height: 28, viewBox: '0 0 24 24', fill: 'currentColor' },
+    h('path', { d: 'M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z' })
+  ),
+  Search: () => h('svg', { width: 18, height: 18, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },
+    h('circle', { cx: 11, cy: 11, r: 8 }), h('path', { d: 'm21 21-4.35-4.35' })
+  ),
+  Send: () => h('svg', { width: 22, height: 22, viewBox: '0 0 24 24', fill: 'currentColor' },
+    h('path', { d: 'M2.01 21L23 12 2.01 3 2 10l15 2-15 2z' })
+  ),
+  TickSent: () => h('svg', { className: 'tick tick-grey', viewBox: '0 0 18 18', fill: 'currentColor' },
+    h('path', { d: 'M17.394 5.035l-.57-.444a.434.434 0 0 0-.609.076L8.397 14.222l-3.399-2.939a.435.435 0 0 0-.615.06l-.42.494a.435.435 0 0 0 .06.614l4.506 3.895a.435.435 0 0 0 .615-.06l9.25-11.239a.434.434 0 0 0-.001-.012z' })
+  ),
+  TickDelivered: () => h('svg', { className: 'tick tick-grey', viewBox: '0 0 18 18', fill: 'currentColor' },
+    h('path', { d: 'M15.854 5.338l-.57-.444a.434.434 0 00-.609.076L6.86 14.222l-1.31-1.133L4.6 14.041l2.26 1.956a.435.435 0 00.615-.06l8.38-10.038a.434.434 0 000-.561z' }),
+    h('path', { d: 'M11.354 5.338l-.57-.444a.434.434 0 00-.609.076L2.36 14.222l-.399-.345-.95.95 1.349 1.168a.435.435 0 00.615-.06l8.38-10.038a.434.434 0 000-.561z' })
+  ),
+  TickSeen: () => h('svg', { className: 'tick tick-blue', viewBox: '0 0 18 18', fill: 'currentColor' },
+    h('path', { d: 'M15.854 5.338l-.57-.444a.434.434 0 00-.609.076L6.86 14.222l-1.31-1.133L4.6 14.041l2.26 1.956a.435.435 0 00.615-.06l8.38-10.038a.434.434 0 000-.561z' }),
+    h('path', { d: 'M11.354 5.338l-.57-.444a.434.434 0 00-.609.076L2.36 14.222l-.399-.345-.95.95 1.349 1.168a.435.435 0 00.615-.06l8.38-10.038a.434.434 0 000-.561z' })
+  ),
+  Clock: () => h('svg', { className: 'tick tick-grey', viewBox: '0 0 18 18', fill: 'currentColor' },
+    h('circle', { cx: 9, cy: 9, r: 7, stroke: 'currentColor', strokeWidth: 1.5, fill: 'none' }),
+    h('path', { d: 'M9 5v4l2.5 2.5', stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round', fill: 'none' })
+  ),
+  Chat: () => h('svg', { width: 80, height: 80, viewBox: '0 0 24 24', fill: 'currentColor' },
+    h('path', { d: 'M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z' })
+  ),
+};
+
+// ── Utility helpers ────────────────────────────────────────────────────────────
+const formatTime = (dateStr) => {
+  if (!dateStr) return '';
+  return new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+};
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  const today = new Date();
+  const diff = (today - d) / 86400000;
+  if (diff < 1 && d.getDate() === today.getDate()) return 'Today';
+  if (diff < 2) return 'Yesterday';
+  return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+};
+
+const avatarColor = (str = '') => {
+  const colors = ['#e67e22','#3498db','#9b59b6','#1abc9c','#e74c3c','#2ecc71','#f39c12','#16a085'];
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  return colors[Math.abs(hash) % colors.length];
+};
+
+const initials = (str = '') => str.slice(0, 2).toUpperCase();
+
+// ── API client ────────────────────────────────────────────────────────────────
+async function apiCall(method, path, body = null, opts = {}) {
+  const token = localStorage.getItem('access_token');
+  const res = await fetch(`${API}${path}`, {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: body ? JSON.stringify(body) : undefined,
+    ...opts,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Request failed' }));
+    throw new Error(err.detail || 'Request failed');
+  }
+  return res.status === 204 ? null : res.json();
+}
+
+// ── WebSocket service ─────────────────────────────────────────────────────────
+class WS {
+  constructor() {
+    this.ws = null;
+    this.listeners = {};
+    this.reconnectAttempt = 0;
+    this.closed = false;
+    this.heartbeat = null;
+  }
+  connect(userId, token) {
+    this.userId = userId;
+    this.token = token;
+    this.closed = false;
+    this._connect();
+  }
+  _connect() {
+    if (this.closed) return;
+    const url = `${WS_URL}/ws/${this.userId}?token=${this.token}`;
+    this.ws = new WebSocket(url);
+    this.ws.onopen = () => {
+      this.reconnectAttempt = 0;
+      this._emit('_connected', {});
+      this.heartbeat = setInterval(() => this.send('ping', {}), 15000);
+    };
+    this.ws.onclose = () => {
+      clearInterval(this.heartbeat);
+      this._emit('_disconnected', {});
+      if (!this.closed) {
+        const delay = Math.min(1000 * 2 ** this.reconnectAttempt++, 30000);
+        setTimeout(() => this._connect(), delay + Math.random() * 1000);
+      }
+    };
+    this.ws.onmessage = (e) => {
+      try { const { event, payload } = JSON.parse(e.data); this._emit(event, payload); }
+      catch (_) {}
+    };
+  }
+  disconnect() { this.closed = true; clearInterval(this.heartbeat); this.ws?.close(); }
+  send(event, payload) {
+    if (this.ws?.readyState === 1) this.ws.send(JSON.stringify({ event, payload, event_id: crypto.randomUUID() }));
+  }
+  on(event, cb) {
+    (this.listeners[event] = this.listeners[event] || []).push(cb);
+    return () => { this.listeners[event] = (this.listeners[event] || []).filter(x => x !== cb); };
+  }
+  _emit(event, payload) { (this.listeners[event] || []).forEach(cb => { try { cb(payload); } catch(_){} }); }
+}
+const ws = new WS();
+
+// ── Auth Screen ───────────────────────────────────────────────────────────────
+function AuthScreen({ onAuth }) {
+  const [tab, setTab] = useState('login');
+  const [phone, setPhone] = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const submit = async () => {
+    setError(''); setLoading(true);
+    try {
+      let data;
+      if (tab === 'login') {
+        data = await apiCall('POST', '/auth/login', { phone, password });
+      } else {
+        data = await apiCall('POST', '/auth/register', { phone, username, password });
+      }
+      localStorage.setItem('access_token', data.access_token);
+      localStorage.setItem('refresh_token', data.refresh_token);
+      localStorage.setItem('user_id', data.user_id);
+      const user = await apiCall('GET', '/users/me');
+      ws.connect(data.user_id, data.access_token);
+      onAuth(user);
+    } catch(e) { setError(e.message); }
+    finally { setLoading(false); }
+  };
+
+  return h('div', { className: 'auth-screen' },
+    h('div', { className: 'auth-card' },
+      h('div', { className: 'auth-logo' },
+        h('div', { className: 'auth-logo-icon' }, h(Icon.Logo, { style: { color: 'white' } })),
+        h('div', null,
+          h('h1', null, 'WhatsApp'),
+          h('p', null, 'Connect, Message, Share')
+        )
+      ),
+      h('div', { className: 'auth-tabs' },
+        h('button', { className: `auth-tab ${tab === 'login' ? 'active' : ''}`, onClick: () => setTab('login') }, 'Log In'),
+        h('button', { className: `auth-tab ${tab === 'register' ? 'active' : ''}`, onClick: () => setTab('register') }, 'Register'),
+      ),
+      error && h('div', { className: 'auth-error' }, error),
+      h('div', { className: 'form-field' },
+        h('label', null, 'Phone (E.164 format)'),
+        h('input', { type: 'tel', placeholder: '+1234567890', value: phone, onChange: e => setPhone(e.target.value) })
+      ),
+      tab === 'register' && h('div', { className: 'form-field' },
+        h('label', null, 'Username'),
+        h('input', { type: 'text', placeholder: 'Your name', value: username, onChange: e => setUsername(e.target.value) })
+      ),
+      h('div', { className: 'form-field' },
+        h('label', null, 'Password'),
+        h('input', { type: 'password', placeholder: '••••••••', value: password, onChange: e => setPassword(e.target.value),
+          onKeyDown: e => e.key === 'Enter' && submit() })
+      ),
+      h('button', { className: 'auth-btn', onClick: submit, disabled: loading },
+        loading ? 'Please wait...' : (tab === 'login' ? 'Log In' : 'Create Account')
+      )
+    )
+  );
+}
+
+// ── MessageTick component ─────────────────────────────────────────────────────
+function MessageTick({ status }) {
+  if (status === 'sending') return h(Icon.Clock);
+  if (status === 'sent') return h(Icon.TickSent);
+  if (status === 'delivered') return h(Icon.TickDelivered);
+  if (status === 'seen') return h(Icon.TickSeen);
+  return null;
+}
+
+// ── MessageBubble ─────────────────────────────────────────────────────────────
+function MessageBubble({ msg, isOwn }) {
+  const cls = `message-bubble ${isOwn ? 'outgoing' : 'incoming'} ${msg.status === 'sending' ? 'sending' : ''}`;
+  return h('div', { className: cls },
+    isOwn ? h('div', { className: 'message-tail-out' }) : h('div', { className: 'message-tail-in' }),
+    msg.is_deleted
+      ? h('span', { className: 'message-deleted' }, '🚫 This message was deleted')
+      : h('span', { className: 'message-content' }, msg.content),
+    h('div', { className: 'message-footer' },
+      h('span', { className: 'message-time' }, formatTime(msg.created_at)),
+      isOwn && h('div', { className: 'ticks' }, h(MessageTick, { status: msg.status }))
+    )
+  );
+}
+
+// ── TypingIndicator ───────────────────────────────────────────────────────────
+function TypingIndicator({ names }) {
+  if (!names.length) return null;
+  return h('div', { className: 'typing-indicator' },
+    h('div', { className: 'typing-bubble' },
+      h('div', { className: 'typing-dot' }),
+      h('div', { className: 'typing-dot' }),
+      h('div', { className: 'typing-dot' }),
+    )
+  );
+}
+
+// ── ChatWindow ────────────────────────────────────────────────────────────────
+function ChatWindow({ chat, currentUser, onlineUsers }) {
+  const [messages, setMessages] = useState([]);
+  const [text, setText] = useState('');
+  const [typingUsers, setTypingUsers] = useState(new Set());
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const bottomRef = useRef(null);
+  const typingTimers = useRef({});
+  const isTyping = useRef(false);
+  const stopTypingTimer = useRef(null);
+
+  // Load messages
+  useEffect(() => {
+    if (!chat) return;
+    setMessages([]);
+    setTypingUsers(new Set());
+    ws.send('join_chat', { chat_id: chat.id });
+
+    apiCall('GET', `/messages/${chat.id}?limit=50`).then(data => {
+      setMessages(data.messages || []);
+      setHasMore(data.has_more);
+      setTimeout(() => bottomRef.current?.scrollIntoView(), 50);
+    }).catch(console.error);
+
+    return () => ws.send('leave_chat', { chat_id: chat.id });
+  }, [chat?.id]);
+
+  // WS events
+  useEffect(() => {
+    const unsubs = [
+      ws.on('receive_message', msg => {
+        if (msg.chat_id !== chat?.id) return;
+        setMessages(prev => prev.some(m => m.id === msg.id) ? prev : [...prev, msg]);
+        ws.send('message_seen', { message_id: msg.id, chat_id: msg.chat_id });
+        setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+      }),
+      ws.on('message_ack', ack => {
+        if (ack.chat_id !== chat?.id) return;
+        setMessages(prev => prev.map(m =>
+          (m.id === ack.temp_id || m.temp_id === ack.temp_id)
+            ? { ...m, id: ack.real_id, status: ack.status, isOptimistic: false }
+            : m
+        ));
+      }),
+      ws.on('message_seen', ({ message_id }) => {
+        setMessages(prev => prev.map(m => m.id === message_id ? { ...m, status: 'seen' } : m));
+      }),
+      ws.on('messages_seen_batch', ({ chat_id }) => {
+        if (chat_id !== chat?.id) return;
+        setMessages(prev => prev.map(m =>
+          m.sender_id === currentUser.id && m.status !== 'seen' ? { ...m, status: 'seen' } : m
+        ));
+      }),
+      ws.on('typing', ({ chat_id, user_id }) => {
+        if (chat_id !== chat?.id || user_id === currentUser.id) return;
+        setTypingUsers(prev => new Set([...prev, user_id]));
+        clearTimeout(typingTimers.current[user_id]);
+        typingTimers.current[user_id] = setTimeout(() => {
+          setTypingUsers(prev => { const s = new Set(prev); s.delete(user_id); return s; });
+        }, 4000);
+      }),
+      ws.on('stop_typing', ({ chat_id, user_id }) => {
+        if (chat_id !== chat?.id) return;
+        setTypingUsers(prev => { const s = new Set(prev); s.delete(user_id); return s; });
+      }),
+    ];
+    return () => unsubs.forEach(fn => fn());
+  }, [chat?.id, currentUser?.id]);
+
+  const handleKeyPress = () => {
+    if (!isTyping.current) { isTyping.current = true; ws.send('typing', { chat_id: chat.id }); }
+    clearTimeout(stopTypingTimer.current);
+    stopTypingTimer.current = setTimeout(() => {
+      isTyping.current = false; ws.send('stop_typing', { chat_id: chat.id });
+    }, 2000);
+  };
+
+  const sendMsg = () => {
+    const content = text.trim();
+    if (!content) return;
+    const tempId = crypto.randomUUID();
+    const now = new Date().toISOString();
+    const optimistic = { id: tempId, temp_id: tempId, chat_id: chat.id, sender_id: currentUser.id, content, content_type: 'text', status: 'sending', created_at: now, updated_at: now };
+    setMessages(prev => [...prev, optimistic]);
+    setText('');
+    ws.send('send_message', { chat_id: chat.id, content, content_type: 'text', temp_id: tempId });
+    setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+    isTyping.current = false; clearTimeout(stopTypingTimer.current);
+    ws.send('stop_typing', { chat_id: chat.id });
+  };
+
+  const loadMore = async () => {
+    if (!hasMore || loadingMore || !messages.length) return;
+    setLoadingMore(true);
+    try {
+      const oldest = messages[0];
+      const data = await apiCall('GET', `/messages/${chat.id}?before=${oldest.id}&limit=50`);
+      setMessages(prev => [...(data.messages || []), ...prev]);
+      setHasMore(data.has_more);
+    } finally { setLoadingMore(false); }
+  };
+
+  const isOnline = chat.type === 'direct' && chat.participants.find(p => p !== currentUser.id && onlineUsers.has(p));
+  const chatName = chat.group_name || 'Contact';
+  const otherUserId = chat.type === 'direct' ? chat.participants.find(p => p !== currentUser.id) : null;
+
+  return h('div', { className: 'chat-area' },
+    // Header
+    h('div', { className: 'chat-header' },
+      h('div', { className: 'chat-avatar', style: { background: avatarColor(chatName) } }, initials(chatName)),
+      h('div', { className: 'contact-info' },
+        h('div', { className: 'contact-name' }, chatName),
+        typingUsers.size > 0
+          ? h('div', { className: 'contact-status online' }, 'typing...')
+          : h('div', { className: `contact-status ${isOnline ? 'online' : ''}` }, isOnline ? 'online' : 'click for info')
+      )
+    ),
+    // Messages
+    h('div', { className: 'messages-area', onScroll: e => { if (e.target.scrollTop < 100) loadMore(); } },
+      h('div', { className: 'messages-inner' },
+        hasMore && h('div', { className: 'load-more-btn' },
+          h('button', { onClick: loadMore, disabled: loadingMore }, loadingMore ? 'Loading...' : 'Load older messages')
+        ),
+        messages.map((msg, i) => {
+          const isOwn = msg.sender_id === currentUser.id;
+          const prevMsg = messages[i - 1];
+          const showDate = !prevMsg || formatDate(msg.created_at) !== formatDate(prevMsg.created_at);
+          return h('div', { key: msg.id || msg.temp_id },
+            showDate && h('div', { className: 'date-divider' }, h('span', null, formatDate(msg.created_at))),
+            h(MessageBubble, { msg, isOwn })
+          );
+        }),
+        h(TypingIndicator, { names: [...typingUsers] }),
+        h('div', { ref: bottomRef })
+      )
+    ),
+    // Input
+    h('div', { className: 'chat-input-area' },
+      h('div', { className: 'message-input-wrap' },
+        h('textarea', {
+          className: 'message-input',
+          placeholder: 'Type a message',
+          rows: 1,
+          value: text,
+          onChange: e => { setText(e.target.value); handleKeyPress(); },
+          onKeyDown: e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); } }
+        })
+      ),
+      h('button', { className: 'send-btn', onClick: sendMsg, disabled: !text.trim() },
+        h(Icon.Send)
+      )
+    )
+  );
+}
+
+// ── Sidebar ───────────────────────────────────────────────────────────────────
+function Sidebar({ currentUser, activeChat, onSelectChat, onlineUsers }) {
+  const [chats, setChats] = useState([]);
+  const [search, setSearch] = useState('');
+  const [wsConnected, setWsConnected] = useState(false);
+
+  useEffect(() => {
+    apiCall('GET', '/chats/').then(data => setChats(data || [])).catch(console.error);
+
+    const unsubs = [
+      ws.on('_connected', () => setWsConnected(true)),
+      ws.on('_disconnected', () => setWsConnected(false)),
+      ws.on('receive_message', msg => {
+        setChats(prev => prev.map(c =>
+          c.id === msg.chat_id ? { ...c, last_message: msg, updated_at: msg.created_at } : c
+        ).sort((a, b) => new Date(b.updated_at || 0) - new Date(a.updated_at || 0)));
+      }),
+    ];
+    return () => unsubs.forEach(fn => fn());
+  }, []);
+
+  const filtered = chats.filter(c => {
+    const name = c.group_name || 'Contact';
+    return name.toLowerCase().includes(search.toLowerCase());
+  });
+
+  const getChatName = (chat) => {
+    if (chat.type === 'group') return chat.group_name || 'Group';
+    const otherId = chat.participants.find(p => p !== currentUser.id);
+    return `User ${otherId?.slice(-4) || '?'}`;
+  };
+
+  const getChatOnline = (chat) => {
+    if (chat.type !== 'direct') return false;
+    return chat.participants.some(p => p !== currentUser.id && onlineUsers.has(p));
+  };
+
+  return h('div', { className: 'sidebar' },
+    h('div', { className: 'sidebar-header' },
+      h('div', { className: 'user-avatar', style: { background: avatarColor(currentUser.username) } },
+        initials(currentUser.username)
+      ),
+      h('div', { className: 'actions' },
+        h('div', { className: wsConnected ? 'ws-status connected' : 'ws-status disconnected' },
+          wsConnected ? '● Live' : '○ Offline'
+        )
+      )
+    ),
+    h('div', { className: 'search-bar' },
+      h('div', { className: 'search-input-wrap' },
+        h(Icon.Search),
+        h('input', { placeholder: 'Search or start new chat', value: search, onChange: e => setSearch(e.target.value) })
+      )
+    ),
+    h('div', { className: 'chat-list' },
+      filtered.map(chat => {
+        const name = getChatName(chat);
+        const online = getChatOnline(chat);
+        const preview = chat.last_message?.content || 'No messages yet';
+        const time = chat.last_message ? formatTime(chat.last_message.created_at) : '';
+        return h('div', { key: chat.id, className: `chat-item ${activeChat?.id === chat.id ? 'active' : ''}`, onClick: () => onSelectChat(chat) },
+          h('div', { className: 'chat-avatar', style: { background: avatarColor(name), position: 'relative' } },
+            initials(name),
+            online && h('div', { style: { position: 'absolute', bottom: 0, right: 0, width: 12, height: 12, background: 'var(--wa-green)', border: '2px solid var(--wa-panel-header)', borderRadius: '50%' } })
+          ),
+          h('div', { className: 'chat-info' },
+            h('div', { className: 'chat-top' },
+              h('span', { className: 'chat-name' }, name),
+              time && h('span', { className: 'chat-time' }, time)
+            ),
+            h('div', { className: 'chat-preview' },
+              h('span', { className: 'chat-preview-text' }, preview)
+            )
+          )
+        );
+      })
+    )
+  );
+}
+
+// ── App Root ──────────────────────────────────────────────────────────────────
+function App() {
+  const [currentUser, setCurrentUser] = useState(null);
+  const [activeChat, setActiveChat] = useState(null);
+  const [onlineUsers, setOnlineUsers] = useState(new Set());
+  const [booting, setBooting] = useState(true);
+
+  // Restore session
+  useEffect(() => {
+    const token = localStorage.getItem('access_token');
+    const userId = localStorage.getItem('user_id');
+    if (token && userId) {
+      apiCall('GET', '/users/me').then(user => {
+        setCurrentUser(user);
+        ws.connect(userId, token);
+      }).catch(() => localStorage.clear()).finally(() => setBooting(false));
+    } else setBooting(false);
+
+    const unsubs = [
+      ws.on('user_online', ({ user_id }) => setOnlineUsers(prev => new Set([...prev, user_id]))),
+      ws.on('user_offline', ({ user_id }) => setOnlineUsers(prev => { const s = new Set(prev); s.delete(user_id); return s; })),
+    ];
+    return () => unsubs.forEach(fn => fn());
+  }, []);
+
+  if (booting) return null;
+
+  if (!currentUser) return h(AuthScreen, { onAuth: setCurrentUser });
+
+  return h('div', { className: 'app-container' },
+    h(Sidebar, { currentUser, activeChat, onSelectChat: setActiveChat, onlineUsers }),
+    activeChat
+      ? h(ChatWindow, { chat: activeChat, currentUser, onlineUsers })
+      : h('div', { className: 'chat-area' },
+          h('div', { className: 'empty-state' },
+            h(Icon.Chat),
+            h('h2', null, 'WhatsApp Web'),
+            h('p', null, 'Send and receive messages without keeping your phone online. Use WhatsApp on up to 4 linked devices and 1 phone at the same time.')
+          )
+        )
+  );
+}
+
+// Mount
+createRoot(document.getElementById('root')).render(h(App));
+</script>
+</body>
+</html>
